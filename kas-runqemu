@@ -1,0 +1,275 @@
+#!/usr/bin/env python3
+#
+# Wrapper around the runqemu script that uses a kas build environment.
+#
+# Despite the name, this does _not_ run qemu inside of the kas build container.
+# runqemu is generally not going to work correctly inside of the kas build
+# container, because runqemu wants to set up networking and some other stuff
+# that isn't passed into the container environment by kas-container.
+#
+# Meanwhile, we can't _just_ use runqemu, for two reasons:
+# - runqemu depends on being able to call bitbake, but bitbake doesn't exist
+#   inside of the host environment, it only exists inside the container.
+# - if we need to run a bitbake-built qemu (such as xilinx's multi-chip qemu
+#   emulation), that bitbake-built qemu was built with uninative, and
+#   uninative has pointed all the ELF loader paths to a directory under /work;
+#   because /work doesn't exist in our host environment, these things won't
+#   run.
+#
+# This script resolves both of those problems:
+# - anywhere we'd be calling bitbake, we instead pass that through `kas shell`
+#   so that it's running inside of the container environment.
+# - this script also sets its process up with a private mount namespace with
+#   a bunch of bind mounts so that /work exists within this process and its
+#   children. It does this via using unshare() and friends directly-- e.g.,
+#   not through docker.
+
+import importlib.machinery
+import importlib.util
+import os
+import sys
+import tempfile
+import stat
+import subprocess
+import json
+from pathlib import Path
+from ctypes import *
+
+script_path = os.path.dirname(os.path.realpath(__file__))
+kas_container = os.path.join(script_path, "kas-container")
+
+libc = CDLL("libc.so.6", use_errno=True)
+libc.unshare.argtypes = [c_int]
+libc.unshare.restype = c_int
+libc.mount.argtypes = [c_char_p, c_char_p, c_char_p, c_ulong, c_void_p]
+libc.mount.restype = c_int
+
+# linux/sched.h
+CLONE_NEWNS   = 0x00020000
+CLONE_NEWUSER = 0x10000000
+
+# linux/mount.h
+MS_BIND       = 4096
+MS_REC        = 16384
+
+def unshare(flags):
+    """
+    Wrapper for libc's unshare function.
+
+    A native wrapper, `os.unshare`, was added in python 3.12; we
+    define our own for earlier pythons.
+    """
+
+    res = libc.unshare(flags)
+    if (res != 0):
+        raise Exception(os.strerror(get_errno()))
+
+def mount(source, target, fstype, flags=0, data=None):
+    """Wrapper for libc's mount function."""
+
+    res = libc.mount(source.encode(), target.encode(), fstype.encode(), int(flags),
+                     data.encode() if data is not None else None)
+    if (res != 0):
+        raise Exception(os.strerror(get_errno()))
+
+def construct_chroot(kas_work_dir):
+    """
+    Construct a chroot environment including a /work like kas.
+
+    This function creates a temporary directory, populates it with bind mounts
+    mirroring all the base directories of /, and includes a /work bound to the
+    kas working directory. In this way, we get an environment that is "mostly"
+    the host environment with the addition of /work, in order to satisfy the
+    path requirements of binaries built with bitbake from within the container.
+
+    Note: after the conclusion of this function, this process will be in the
+    chroot jail.
+    """
+
+    original_uid = os.getuid()
+    original_gid = os.getgid()
+
+    # unshare to give this process its own user namespace and mount namespace
+    unshare(CLONE_NEWUSER|CLONE_NEWNS)
+
+    # map ourselves to root
+    with open("/proc/self/uid_map", "w") as uidmap:
+        uidmap.write("0 %d 1" % original_uid)
+    with open("/proc/self/setgroups", "w") as setgroups:
+        setgroups.write("deny")
+    with open("/proc/self/gid_map", "w") as gidmap:
+        gidmap.write("0 %d 1" % original_gid)
+
+    # temp folder for new root
+    tmp_dir = tempfile.mkdtemp(prefix="kas-runqemu-")
+
+    # make a /work directory (bind-mounted to the kas work directory)
+    os.mkdir(os.path.join(tmp_dir, "work"))
+    mount(kas_work_dir, os.path.join(tmp_dir, "work"), "", MS_BIND)
+
+    # bind-mount (or symlink) in everything else from /
+    for subdir in ["dev", "etc", "home", "bin", "lib", "lib32", "lib64", "sbin", "tmp", "usr", "var", "proc", "run"]:
+        orig_path = os.path.join("/", subdir)
+        orig_stat = os.lstat(orig_path)
+        if stat.S_ISDIR(orig_stat.st_mode):
+            os.mkdir(os.path.join(tmp_dir, subdir))
+            mount(os.path.join("/", subdir), os.path.join(tmp_dir, subdir), "", MS_BIND|MS_REC)
+        elif stat.S_ISLNK(orig_stat.st_mode):
+            os.symlink(os.readlink(orig_path), os.path.join(tmp_dir, subdir))
+
+    # chroot into the new root
+    cur_dir = os.getcwd()
+    os.chroot(tmp_dir)
+    os.chdir(cur_dir)
+    # note: tmp_dir wil persist after conclusion of this process. we don't have
+    # a way to clean it up. sorry.
+
+
+def import_from_path(module_name, file_path):
+    """Import a python script (not necessarily ending in ".py") as a module."""
+
+    loader = importlib.machinery.SourceFileLoader(module_name, file_path)
+    spec = importlib.util.spec_from_loader(loader.name, loader)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def get_repo_path(kas_config, kas_work_dir, repo_name):
+    """Get the checkout directory for a given repo."""
+
+    cfg = json.loads(subprocess.check_output([
+        kas_container,
+        "dump",
+        "--format", "json",
+        kas_config]).decode("utf-8"))
+
+    # check to see if the config file has a 'path' entry for the repo
+    repo_path = None
+    if "repos" in cfg:
+        repos = cfg["repos"]
+        if repo_name in repos:
+            repo = repos[repo_name]
+            if "path" in repo:
+                repo_path = repo["path"]
+                # if the path is relative, it is relative to the kas work dir
+                if not Path(repo_path).is_absolute():
+                    repo_path = os.path.join(kas_work_dir, repo_path)
+
+    # otherwise, the checkout directory defaults to kas_work_dir + repo.name
+    if not repo_path:
+        repo_path = os.path.join(kas_work_dir, repo_name)
+
+    return repo_path
+
+
+def hijack_runqemu(runqemu_path, kas_config, kas_work_dir):
+    """
+    Hijack and override portions of the runqemu script.
+
+    The runqemu script has a few places where it runs bitbake; however, we need
+    to be within the kas container in order for that to work properly. Our
+    version of the BaseConfig class will intercept such calls and run them
+    inside the container environment.
+
+    We also need to do some fixups on the paths that get returned, because the
+    bitbake configuration assumes that it's running in the container (where
+    everything is built in a subdirectory of /work); we have to undo that
+    and "decontainerize" the paths in order for runqemu to find qemuboot.conf
+    correctly.
+
+    Returns the runqemu script as a module.
+    """
+
+    runqemu = import_from_path("runqemu", runqemu_path)
+
+    logger = runqemu.logger
+
+    # Wrap the BaseConfig with our own implementation where we can stub out
+    # all the direct bitbake calls.
+    class ReplacementBaseConfig(runqemu.BaseConfig):
+        def __init__(self):
+            super(runqemu.BaseConfig, self).__init__()
+
+        def start_qemu(self):
+            construct_chroot(kas_work_dir)
+            super(runqemu.BaseConfig, self).start_qemu()
+
+        def fixup_container_paths(self, shell_output):
+            output = ""
+            for line in shell_output.split('\n'):
+                # don't bother with comments
+                if not line or line[0] == '#':
+                    continue
+
+                # the bitbake environment includes a bunch of functions at the end;
+                # once we see these these we can stop.
+                if line.startswith("base_do_compile() {"):
+                    break
+
+                # replace instances of the '/work' base path in order to uncontainerify
+                # path names; unfortunately because "work" is also used as a directory
+                # by bitbake (as in BUILDDIR/tmp/work) we have to avoid those cases.
+                line = line.replace("=/work", "=" + kas_work_dir)
+                line = line.replace("=\"/work", "=\"" + kas_work_dir)
+                line = line.replace(",/work", "," + kas_work_dir)
+                line = line.replace(":/work", ":" + kas_work_dir)
+                output += line + "\n"
+            return output
+
+        def run_bitbake_env(self, mach=None, target=''):
+            if not mach:
+                mach = self.get('MACHINE')
+
+            multiconfig = self.get('MULTICONFIG')
+            if multiconfig:
+                multiconfig = "mc:%s" % multiconfig
+
+            if mach:
+                env_prepend = 'KAS_MACHINE=%s' % (mach,)
+            cmd = 'bitbake -e %s %s' % (multiconfig, target)
+
+            contained_cmd = "%s shell %s -c \"%s\"" % (kas_container, kas_config, cmd)
+
+            logger.info("Running %s..." % contained_cmd)
+            try:
+                return self.fixup_container_paths(subprocess.check_output(contained_cmd, shell=True).decode('utf-8'))
+            except subprocess.CalledProcessError as err:
+                logger.warning("Couldn't run '%s' to gather environment information, maybe the target wasn't an image name.\n%s" % (cmd, err.output.decode('utf-8')))
+                return ''
+
+    runqemu.BaseConfig = ReplacementBaseConfig
+
+    return runqemu
+
+
+def main():
+    if "KAS_WORK_DIR" in os.environ:
+        kas_work_dir = os.environ["KAS_WORK_DIR"]
+    else:
+        kas_work_dir = script_path
+
+    # runqemu main will do its own arg parsing, but we need to stick in an arg for
+    # the kas configuration.
+    if len(sys.argv) < 2:
+        print("usage: %s <config> [runqemu args]" % sys.argv[0], file=sys.stderr)
+        sys.exit(1)
+    kas_config = sys.argv.pop(1)
+
+    # find the path to the 'runqemu' script
+    oecore_path = get_repo_path(kas_config, kas_work_dir, "openembedded-core")
+    runqemu_path = os.path.join(oecore_path, 'scripts', 'runqemu')
+
+    # there are a number of runqemu-* helper scripts that need to be in PATH
+    os.environ['PATH'] = os.environ['PATH'] + ":" + os.path.dirname(runqemu_path)
+
+    # Import the 'runqemu' script as a module.
+    hijacked_module = hijack_runqemu(runqemu_path, kas_config, kas_work_dir)
+
+    # and then run our manipulated runqemu
+    hijacked_module.main()
+
+
+if __name__ == "__main__":
+    main()
