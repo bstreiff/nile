@@ -78,9 +78,9 @@ elif [ "$CONTAINER_BASE" = "kas" ]; then
 
 	# create kas container
 	docker build \
-		-f "${SCRIPT_ROOT}/build-nile.Dockerfile" \
+		-f "${SCRIPT_ROOT}/build-nile.kas.Dockerfile" \
 		-t "${IMAGE_NAME}:${short_hash}" \
-		--build-arg=PYREX_IMAGE=${KAS_BASE}:${KAS_BASE_TAG} \
+		--build-arg=KAS_IMAGE=${KAS_BASE}:${KAS_BASE_TAG} \
 		"${SCRIPT_ROOT}"
 
 	# tag the image with the image version
