@@ -1,0 +1,44 @@
+header:
+    version: 19
+
+machine: talladega
+
+local_conf_header:
+    # TODO: fixup for relative path in meta-talladega
+    # the external-hdf recipe uses this variable
+    # "real" exports are handled by pipeline fetching a nuget pkg from artifactory and
+    # yanking out a file.
+    #
+    # this should probably be in machine/talladega.conf
+    #
+    # we probably need a better way to handle this
+    #hdf-path: |
+    #    HDF_PATH ?= "${BBLAYERS_FETCH_DIR}/../meta-talladega/meta-talladega/conf/machine/talladega.xsa"
+
+    hdf-path: |
+        NUGET_SOURCE_rnd-nuget-release = "https://niartifacts.jfrog.io/artifactory/api/nuget/v3/rnd-nuget-release/index.json"
+        NUGET_SOURCE_rnd-nuget-pre = "https://niartifacts.jfrog.io/artifactory/api/nuget/v3/rnd-nuget-pre/index.json"
+        #HDF_SHA256_CHECKSUM = "241ea184c597ff7e1681d54ea04ff162aaee2a9f32237cf6b812dc8bbee701f6"
+        HDF_SHA256_CHECKSUM = "58443c4c18dd30a3bf2b82fd7737171bacd33041602dca931a267a6c7c08b78f"
+        HDF_BASE = "nuget://"
+        #HDF_PATH = "rnd-nuget-release/ni.hw-automotive-networks.talladega.talladegafpga/1.1.0.3+25091119.96bbe505"
+        # TODO: okay can we refer to these with a version that doesn't have 'ci-passed-main-a' embedded into it,
+        #       this is just weird, why would we embed that there
+        HDF_PATH = "rnd-nuget-pre/ni.hw-automotive-networks.talladega.talladegafpga/1.1.1.63-ci-passed-main-a+25102700.7844c5b2"
+        BRANCHARG = ""
+        HDF_EXTENSION = ";sha256sum=${HDF_SHA256_CHECKSUM}"
+        HDF_NAME = "${S}/nuget/xsa/ps.xsa"
+
+        # FULL_BITFILE_IMAGE = "talladega_fsbl.bit"
+        # Adds the PL image (bitstream) to the build to be programmed at boot time
+        #
+        # this probably needs a bbappend to use the fetcher; xilinx-bootgen seems to only want them from a file://
+        RDEPENDS:xilinx-bootgen:append = " ni-fpga-binaries"
+        BIT_PARTITION_IMAGE[bitstream] = "${DEPLOY_DIR}/ni-fpga/${MACHINE}_tandem1.bit"
+        BIT_PARTITION_IMAGE[stage2] = "${DEPLOY_DIR}/ni-fpga/${MACHINE}_tandem2.bit"
+        FULL_BITFILE_IMAGE = "${DEPLOY_DIR}/ni-fpga/${MACHINE}_fsbl.bit"
+        #BIF_PARTITION_IMAGE[bitstream] = "${TOPDIR}/../azdodeps/bitfile/${MACHINE}_tandem1.bit"
+        #BIF_PARTITION_IMAGE[stage2] = "${TOPDIR}/../azdodeps/bitfile/${MACHINE}_tandem2.bit"
+        #FULL_BITFILE_IMAGE = "${TOPDIR}/../azdodeps/bitfile/${MACHINE}_fsbl.bit"
+
+        # TODO: is there a better way we should be distributing these?

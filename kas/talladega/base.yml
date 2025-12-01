@@ -1,0 +1,116 @@
+# TODO: reconcile with base; talladega layer isn't compatible with
+#       scarthgap, needs to be updated before that can happen
+
+header:
+    version: 19
+
+distro: nascar # TODO: this is what meta-tallaega used, update to "nile"?
+
+env:
+    BUILDNAME: "99.0.0d0"
+    # TODO: this may not be the best way to be handling this
+    soce_switch_GIT_COMMIT_ID: "862c5778d8a85415d3daac5934fd4cd44046c34b"
+    broadcom_eiger_GIT_COMMIT_ID: "0ae79c7da91fc065d1f965db9b562cd86e9a3806"
+    # if i set this:
+    #   layers/meta-talladega/meta-talladega/recipes-kernel/linux/linux-talladega_git.bb:
+    #   AUTOREV/SRCPV set too late for the fetcher to work properly, please set the variables
+    #   earlier in parsing. Erroring instead of later obtuse build failures
+    # why isn't this broken in the regular pipeline?
+    #linux_talladega_GIT_COMMIT_ID: "82fc3a8d480607a09197f25d43c7358e5ebd7cb0"
+
+defaults:
+    repos:
+        # TODO: meta-talladega is currently on langdale, not scarthgap
+        branch: "langdale"
+
+local_conf_header:
+    disk-space-monitoring: |
+        BB_DISKMON_DIRS ??= "\
+            STOPTASKS,${TMPDIR},1G,100K \
+            STOPTASKS,${DL_DIR},1G,100K \
+            STOPTASKS,${SSTATE_DIR},1G,100K \
+            STOPTASKS,/tmp,100M,100K \
+            HALT,${TMPDIR},100M,1K \
+            HALT,${DL_DIR},100M,1K \
+            HALT,${SSTATE_DIR},100M,1K \
+            HALT,/tmp,10M,1K"
+
+    ipk-packages: |
+        PACKAGE_CLASSES ?= "package_ipk"
+
+    build-stats: |
+        USER_CLASSES ?= "buildstats"
+
+repos:
+    # meta-nile is only compatible with scarthgap, can't be used with langdale repos
+    #meta-nile:
+    #    path: "meta-nile"
+    #    layers:
+    #        .:
+
+    meta-talladega:
+        url: "https://github.com/ni/meta-talladega.git"
+        path: "layers/meta-talladega"
+        branch: "main" # meta-talladega doesn't have OE-codenamed branches
+        commit: "8bec1859e8e8cc96f42005f0e67ad7ccf119d480"
+        layers:
+            meta-talladega:
+
+    # meta-talladega currently gets bitbake/oe-core/meta-yocto via poky,
+    # but the poky combined repo is dead upstream
+    # https://git.yoctoproject.org/poky/commit/?id=7b5fa59751262b9f47fa44db0374662d0fa3fa67
+    # so instead we depend on the individual repos
+
+    bitbake:
+        #url: "https://git.openembedded.org/bitbake.git"
+        url: "https://github.com/bstreiff/bitbake.git" # needed for nuget fetcher
+        path: "layers/bitbake"
+        branch: "dev/bstreiff/2.2/nuget" # version matching langdale
+        # This repo does not provide any layers.
+        layers:
+            .: disabled
+
+    openembedded-core:
+        url: "https://git.openembedded.org/openembedded-core.git"
+        path: "layers/openembedded-core"
+        layers:
+            meta:
+
+    meta-yocto:
+        url: "https://git.yoctoproject.org/meta-yocto.git"
+        path: "layers/meta-yocto"
+        layers:
+            meta-poky:
+            meta-yocto-bsp:
+
+    meta-openembedded:
+        url: "https://git.openembedded.org/meta-openembedded.git"
+        path: "layers/meta-openembedded"
+        layers:
+            meta-filesystems:
+            meta-gnome:
+            meta-initramfs:
+            meta-multimedia:
+            meta-networking:
+            meta-oe:
+            meta-perl:
+            meta-python:
+            meta-webserver:
+            meta-xfce: # ???
+
+    meta-xilinx:
+        url: "https://github.com/Xilinx/meta-xilinx.git"
+        path: "layers/meta-xilinx"
+        branch: "" # override branch default
+        tag: "xlnx-rel-v2023.2"
+        commit: "05911e19d85fd98c42054238392afe95a5125265"
+        layers:
+            meta-xilinx-core:
+            meta-xilinx-standalone:
+
+    meta-xilinx-tools:
+        url: "https://github.com/Xilinx/meta-xilinx-tools.git"
+        path: "layers/meta-xilinx-tools"
+        branch: "" # override branch default
+        tag: "xlnx-rel-v2023.2"
+        commit: "e192e0d84482828bc9b2bf24214029ddddc08cc8"

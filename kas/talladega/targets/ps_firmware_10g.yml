@@ -1,0 +1,8 @@
+header:
+    version: 19
+    includes:
+        - kas/talladega/talladega.yml
+        - kas/talladega/machines/talladega.yml
+
+target:
+- ps-firmware

@@ -1,0 +1,11 @@
+header:
+    version: 19
+    includes:
+        - kas/talladega/base.yml
+
+local_conf_header:
+    xilinx-licenses: |
+        LICENSE_FLAGS_ACCEPTED += " xilinx"
+
+    debug-tweaks: |
+        EXTRA_IMAGE_FEATURES ?= "debug-tweaks"
