@@ -1,0 +1,9 @@
+header:
+  version: 19
+  includes:
+    - kas/includes/base-config.yml
+    - kas/machines/x4xx.yml
+
+target:
+  - mc:ni-titanium-ec:chromium-ec
+  - mc:ni-titanium:gnuradio-image
