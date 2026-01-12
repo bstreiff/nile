@@ -3,6 +3,7 @@ header:
   includes:
     - kas/includes/base-config.yml
     - kas/includes/meta-ettus.yml
+    - kas/includes/meta-mender.yml
     - kas/includes/meta-xilinx.yml
     - kas/includes/meta-stm32.yml
     - kas/includes/meta-virtualization.yml
@@ -17,13 +18,14 @@ local_conf_header:
   using-old-kernel: |
     OLDEST_KERNEL = "5.10"
 
-machine: ni-titanium-rev5
+machine: ni-titanium-rev5-mender
 
 # meta-titanium/conf/multiconfig/ni-titanium.conf sets `DISTRO ?= "Alchemy"`
 # and this overrides kas's `distro` handling, so force it harder by setting
 # a DISTRO in `env`.
 env:
   DISTRO: nile
+  MENDER_ARTIFACT_NAME: git_x4xx
 
 repos:
   meta-ettus:
@@ -31,6 +33,7 @@ repos:
       meta-ettus-bsp:
       meta-ettus-core:
       meta-titanium:
+      meta-mender-titanium:
 
   meta-openembedded:
     layers:
@@ -43,6 +46,14 @@ repos:
   meta-openamp:
     layers:
       .:
+
+  meta-mender:
+    layers:
+      meta-mender-core:
+    patches:
+      systemd-dont-set-source_date_epoch:
+        repo: meta-ettus
+        path: kas/patches/meta-mender/0002-systemd-don-t-set-SOURCE_DATE_EPOCH-to-0.patch
 
   meta-arm:
     layers:
