@@ -24,3 +24,7 @@ repos:
     url: "https://github.com/EttusResearch/meta-ettus-dev"
     path: "layers/meta-ettus"
     branch: "scarthgap"
+    patches:
+      use-https-for-github-kernel-repo:
+        repo: meta-nile
+        path: "../kas/patches/meta-ettus/0001-linux-usrp_6.12-use-https-for-SRC_URI.patch"

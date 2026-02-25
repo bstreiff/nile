@@ -1,0 +1,28 @@
+From 2e9c9a3091cb7ba12bb1391e4f9f0076a955849b Mon Sep 17 00:00:00 2001
+From: Brenda Streiff <brenda.streiff@emerson.com>
+Date: Wed, 25 Feb 2026 15:46:38 -0600
+Subject: [PATCH] linux-usrp_6.12: use https for SRC_URI
+
+Prefer HTTPS to SSH for git SRC_URIs.
+
+Signed-off-by: Brenda Streiff <brenda.streiff@emerson.com>
+---
+ meta-ettus-bsp/recipes-kernel/linux/linux-usrp_6.12.bb | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/meta-ettus-bsp/recipes-kernel/linux/linux-usrp_6.12.bb b/meta-ettus-bsp/recipes-kernel/linux/linux-usrp_6.12.bb
+index 502cf573..9ef21276 100644
+--- a/meta-ettus-bsp/recipes-kernel/linux/linux-usrp_6.12.bb
++++ b/meta-ettus-bsp/recipes-kernel/linux/linux-usrp_6.12.bb
+@@ -14,7 +14,7 @@ SRCREV_meta = "2987fc4250f2ad7f6e2df663bba0742638fbae51"
+ 
+ LINUX_VERSION_EXTENSION = "-usrp"
+ KMETA = "kernel-meta"
+-SRC_URI = "git://git@github.com/EttusResearch/linuxdev.git;name=machine;protocol=ssh;branch=${KBRANCH} \
++SRC_URI = "git://github.com/EttusResearch/linuxdev.git;name=machine;protocol=https;branch=${KBRANCH} \
+            git://git.yoctoproject.org/yocto-kernel-cache;type=kmeta;name=meta;branch=yocto-6.12;destsuffix=${KMETA};protocol=https"
+ KCONFIG_MODE ?= "--alldefconfig"
+ PV = "${LINUX_VERSION}+git${SRCPV}"
+-- 
+2.47.3
+
