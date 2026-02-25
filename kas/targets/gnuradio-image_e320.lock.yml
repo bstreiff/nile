@@ -1,0 +1,20 @@
+header:
+  version: 14
+overrides:
+  repos:
+    bitbake:
+      commit: 8dcf084522b9c66a6639b5f117f554fde9b6b45a
+    meta-ettus:
+      commit: f2dea8235026cddea18b41d2fb61aae8a9f1c468
+    meta-mender:
+      commit: 76404a7b914676a57d76ccb5fe12149112c05c03
+    meta-openembedded:
+      commit: 2759d8870ea387b76c902070bed8a6649ff47b56
+    meta-sdr:
+      commit: 8944351c711f4c3408e58647871267c63077de3d
+    meta-security:
+      commit: afbbe28cee4af2c6760aaead43a4a3ef29969809
+    meta-stm32:
+      commit: 671610c4d5541b65de983986faf0d3ca8d4fb4e9
+    openembedded-core:
+      commit: 6988157ad983978ffd6b12bcefedd4deaffdbbd1
