@@ -1,0 +1,81 @@
+From 18f37199f04e30193021056670b31cdf98783e7c Mon Sep 17 00:00:00 2001
+From: Brenda Streiff <brenda.streiff@emerson.com>
+Date: Thu, 26 Feb 2026 15:31:36 -0600
+Subject: [PATCH] meta-mender-*: fix u-boot patches for i2c eeprom fix
+
+commit daadd63be017 ("meta-ettus-bsp: u-boot: fix reading EEPROM") added
+an item to the bootargs variable, resulting in these patches not applying
+cleanly anymore. Update them.
+
+Signed-off-by: Brenda Streiff <brenda.streiff@emerson.com>
+---
+ ...ni-zynq-Mender.io-support-for-NI-Ettus-Research-E31x.patch | 4 ++--
+ ...ni-zynq-Mender.io-support-for-NI-Ettus-Research-Neon.patch | 4 ++--
+ ...ni-zynq-Mender.io-support-for-NI-Ettus-Research-Neon.patch | 4 ++--
+ ...ni-zynq-Mender.io-support-for-NI-Ettus-Research-Sulf.patch | 4 ++--
+ 4 files changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/meta-mender-e31x/recipes-bsp/u-boot/files/0001-ni-zynq-Mender.io-support-for-NI-Ettus-Research-E31x.patch b/meta-mender-e31x/recipes-bsp/u-boot/files/0001-ni-zynq-Mender.io-support-for-NI-Ettus-Research-E31x.patch
+index f90cf72e..065efca2 100644
+--- a/meta-mender-e31x/recipes-bsp/u-boot/files/0001-ni-zynq-Mender.io-support-for-NI-Ettus-Research-E31x.patch
++++ b/meta-mender-e31x/recipes-bsp/u-boot/files/0001-ni-zynq-Mender.io-support-for-NI-Ettus-Research-E31x.patch
+@@ -62,8 +62,8 @@ index 23104f4a16..cb324c019a 100644
+  #define CONFIG_EXTRA_ENV_SETTINGS	\
+  	"fit_image=boot/fitImage\0"	\
+  	"mboard=e31x-sg3\0"	\
+--	"bootargs=root=/dev/mmcblk0p2 rw rootwait uio_pdrv_genirq.of_id=usrp-uio\0" \
+-+	"bootargs=root=${mender_kernel_root} rw rootwait uio_pdrv_genirq.of_id=usrp-uio\0" \
++-	"bootargs=root=/dev/mmcblk0p2 rw rootwait uio_pdrv_genirq.of_id=usrp-uio at24.io_limit=64\0" \
+++	"bootargs=root=${mender_kernel_root} rw rootwait uio_pdrv_genirq.of_id=usrp-uio at24.io_limit=64\0" \
+  	"load_addr=0x2000000\0"		\
+  	"fit_size=0x800000\0"           \
+  	"fdt_high=0x20000000\0"         \
+diff --git a/meta-mender-neon/recipes-bsp/u-boot/files/0001-ni-zynq-Mender.io-support-for-NI-Ettus-Research-Neon.patch b/meta-mender-neon/recipes-bsp/u-boot/files/0001-ni-zynq-Mender.io-support-for-NI-Ettus-Research-Neon.patch
+index 5bd365af..8793b7fb 100644
+--- a/meta-mender-neon/recipes-bsp/u-boot/files/0001-ni-zynq-Mender.io-support-for-NI-Ettus-Research-Neon.patch
++++ b/meta-mender-neon/recipes-bsp/u-boot/files/0001-ni-zynq-Mender.io-support-for-NI-Ettus-Research-Neon.patch
+@@ -51,8 +51,8 @@ index bac81211bd..4b5ea82f68 100644
+ -	"ec_image=ec-neon-rev1.RW.bin\0" \
+ +	"ec_image=lib/firmware/ni/ec-neon-rev1.RW.bin\0"	\
+  	"expand_ec_image=setenv ec_image lib/firmware/ni/ec-${mboard}.RW.bin\0" \
+--	"bootargs=root=/dev/mmcblk0p2 rw rootwait uio_pdrv_genirq.of_id=usrp-uio\0" \
+-+	"bootargs=root=${mender_kernel_root} rw rootwait uio_pdrv_genirq.of_id=usrp-uio\0" \
++-	"bootargs=root=/dev/mmcblk0p2 rw rootwait uio_pdrv_genirq.of_id=usrp-uio at24.io_limit=64\0" \
+++	"bootargs=root=${mender_kernel_root} rw rootwait uio_pdrv_genirq.of_id=usrp-uio at24.io_limit=64\0" \
+  	"load_addr=0x2000000\0"		\
+  	"fit_size=0x800000\0"           \
+  	"fdt_high=0x20000000\0"         \
+diff --git a/meta-mender-neon/recipes-bsp/u-boot/files/0002-ni-zynq-Mender.io-support-for-NI-Ettus-Research-Neon.patch b/meta-mender-neon/recipes-bsp/u-boot/files/0002-ni-zynq-Mender.io-support-for-NI-Ettus-Research-Neon.patch
+index f03af945..f1da3d5a 100644
+--- a/meta-mender-neon/recipes-bsp/u-boot/files/0002-ni-zynq-Mender.io-support-for-NI-Ettus-Research-Neon.patch
++++ b/meta-mender-neon/recipes-bsp/u-boot/files/0002-ni-zynq-Mender.io-support-for-NI-Ettus-Research-Neon.patch
+@@ -48,8 +48,8 @@ index 7548a37d61..0829efcc24 100644
+  	"ec_disable_swsync=0\0"		\
+  	"ec_image=lib/firmware/ni/ec-neon-rev2.RW.bin\0"	\
+  	"expand_ec_image=setenv ec_image lib/firmware/ni/ec-neon-rev${ec_compat}.RW.bin\0" \
+--	"bootargs=root=/dev/mmcblk0p2 rw rootwait uio_pdrv_genirq.of_id=usrp-uio\0" \
+-+	"bootargs=root=${mender_kernel_root} rw rootwait uio_pdrv_genirq.of_id=usrp-uio\0" \
++-	"bootargs=root=/dev/mmcblk0p2 rw rootwait uio_pdrv_genirq.of_id=usrp-uio at24.io_limit=64\0" \
+++	"bootargs=root=${mender_kernel_root} rw rootwait uio_pdrv_genirq.of_id=usrp-uio at24.io_limit=64\0" \
+  	"load_addr=0x2000000\0"		\
+  	"fit_size=0x800000\0"           \
+  	"fdt_high=0x20000000\0"         \
+diff --git a/meta-mender-sulfur/recipes-bsp/u-boot/files/0001-ni-zynq-Mender.io-support-for-NI-Ettus-Research-Sulf.patch b/meta-mender-sulfur/recipes-bsp/u-boot/files/0001-ni-zynq-Mender.io-support-for-NI-Ettus-Research-Sulf.patch
+index cad52f1e..03ec153c 100644
+--- a/meta-mender-sulfur/recipes-bsp/u-boot/files/0001-ni-zynq-Mender.io-support-for-NI-Ettus-Research-Sulf.patch
++++ b/meta-mender-sulfur/recipes-bsp/u-boot/files/0001-ni-zynq-Mender.io-support-for-NI-Ettus-Research-Sulf.patch
+@@ -49,9 +49,9 @@ index ccc5a9614c..d8a115d473 100644
+  	"mboard=sulfur-rev3\0"	\
+  	"ec_disable_swsync=0\0"		\
+ -	"ec_image=lib/firmware/ni/ec-sulfur-rev3.RW.bin\0" \
+--	"bootargs=root=/dev/mmcblk0p2 rw rootwait uio_pdrv_genirq.of_id=usrp-uio\0" \
++-	"bootargs=root=/dev/mmcblk0p2 rw rootwait uio_pdrv_genirq.of_id=usrp-uio at24.io_limit=64\0" \
+ +	"ec_image=lib/firmware/ni/ec-sulfur-rev3.RW.bin\0"	\
+-+	"bootargs=root=${mender_kernel_root} rw rootwait uio_pdrv_genirq.of_id=usrp-uio\0" \
+++	"bootargs=root=${mender_kernel_root} rw rootwait uio_pdrv_genirq.of_id=usrp-uio at24.io_limit=64\0" \
+  	"expand_ec_image=setenv ec_image lib/firmware/ni/ec-${ec_mboard}-rev${ec_compat}.RW.bin\0" \
+  	"load_addr=0x2000000\0"		\
+  	"fit_size=0x800000\0"           \
+-- 
+2.47.3
+

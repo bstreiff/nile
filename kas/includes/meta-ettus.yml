@@ -28,3 +28,6 @@ repos:
       use-https-for-github-kernel-repo:
         repo: meta-nile
         path: "../kas/patches/meta-ettus/0001-linux-usrp_6.12-use-https-for-SRC_URI.patch"
+      fix-uboot-patches:
+        repo: meta-nile
+        path: "../kas/patches/meta-ettus/0001-meta-mender-fix-u-boot-patches-for-i2c-eeprom-fix.patch"
