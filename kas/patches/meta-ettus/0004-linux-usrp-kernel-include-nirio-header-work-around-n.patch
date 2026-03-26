@@ -1,0 +1,40 @@
+From e264a3b724f257fb16b2c098617b806e82aad0ee Mon Sep 17 00:00:00 2001
+From: Brenda Streiff <brenda.streiff@emerson.com>
+Date: Thu, 26 Mar 2026 14:02:03 -0500
+Subject: [PATCH] linux-usrp: kernel-include-nirio-header: work around not
+ having nirio
+
+If the kernel build doesn't have an nirio.h to export, then the file
+copy step no-ops, but we still create an empty directory, resulting
+in an OE QA issue.
+
+"kernel-include-nirio-header" entered via linux-x4xx, but this doesn't
+seem to be required for other machine types. This would be more correctly
+handled by only creating the -headers package conditionally. In the
+interests of time, do the dumb workaround of `touch`ing the file at
+the destination; this will create a blank one if one was not copied.
+
+Upstream-Status: Inappropriate [hack]
+
+Signed-off-by: Brenda Streiff <brenda.streiff@emerson.com>
+---
+ .../recipes-kernel/linux/kernel-include-nirio-header.inc       | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/meta-ettus-bsp/recipes-kernel/linux/kernel-include-nirio-header.inc b/meta-ettus-bsp/recipes-kernel/linux/kernel-include-nirio-header.inc
+index c213d0a7..cc0e3902 100644
+--- a/meta-ettus-bsp/recipes-kernel/linux/kernel-include-nirio-header.inc
++++ b/meta-ettus-bsp/recipes-kernel/linux/kernel-include-nirio-header.inc
+@@ -7,6 +7,9 @@ FILES:${KERNEL_PACKAGE_NAME}-headers += "${exec_prefix}/include/misc/nirio.h"
+ do_install:append () {
+ 	install -d ${D}${exec_prefix}/include/misc
+ 	find ${STAGING_KERNEL_DIR}/ -name nirio.h -exec cp {} ${D}${exec_prefix}/include/misc \;
++	# Avoid qa issue from this package exporting no files for certain machine
++	# flavors that don't use nirio
++	touch ${D}${exec_prefix}/include/misc/nirio.h
+ }
+ 
+ sysroot_stage_all:append () {
+-- 
+2.47.3
+

@@ -31,3 +31,9 @@ repos:
       fix-uboot-patches:
         repo: meta-nile
         path: "../kas/patches/meta-ettus/0001-meta-mender-fix-u-boot-patches-for-i2c-eeprom-fix.patch"
+      0004-workaround-for-absent-nirio-header:
+        repo: meta-nile
+        path: "../kas/patches/meta-ettus/0004-linux-usrp-kernel-include-nirio-header-work-around-n.patch"
+      0005-:
+        repo: meta-nile
+        path: "../kas/patches/meta-ettus/0005-uhd-specify-mode-for-open-s-with-O_CREAT.patch"

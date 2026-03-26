@@ -1,0 +1,83 @@
+From dadeda966e773a8022e0e190d9150b90376ea568 Mon Sep 17 00:00:00 2001
+From: Brenda Streiff <brenda.streiff@emerson.com>
+Date: Thu, 26 Mar 2026 15:01:55 -0500
+Subject: [PATCH] uhd: specify mode for open()s with O_CREAT
+
+Signed-off-by: Brenda Streiff <brenda.streiff@emerson.com>
+---
+ ...m-specify-mode-for-open-with-O_CREAT.patch | 51 +++++++++++++++++++
+ .../recipes-support/uhd/mpmd_4.9.bb           |  2 +
+ 2 files changed, 53 insertions(+)
+ create mode 100644 meta-ettus-core/recipes-support/uhd/files/0008-mpm-eeprom-specify-mode-for-open-with-O_CREAT.patch
+
+diff --git a/meta-ettus-core/recipes-support/uhd/files/0008-mpm-eeprom-specify-mode-for-open-with-O_CREAT.patch b/meta-ettus-core/recipes-support/uhd/files/0008-mpm-eeprom-specify-mode-for-open-with-O_CREAT.patch
+new file mode 100644
+index 00000000..68fe8f59
+--- /dev/null
++++ b/meta-ettus-core/recipes-support/uhd/files/0008-mpm-eeprom-specify-mode-for-open-with-O_CREAT.patch
+@@ -0,0 +1,51 @@
++From 0cffab487c700395d7d29895c4c6943263c097f7 Mon Sep 17 00:00:00 2001
++From: Brenda Streiff <brenda.streiff@emerson.com>
++Date: Thu, 26 Mar 2026 14:54:25 -0500
++Subject: [PATCH] mpm: eeprom: specify mode for open() with O_CREAT
++
++A sufficiently-new-enough gcc finds this error in open() usage:
++
++> error: call to '__open_missing_mode' declared with attribute error:
++> open with O_CREAT or O_TMPFILE in second argument needs 3 arguments
++
++Specify a mode of 0666 for the three open()s in eeprom.c that need it.
++
++Signed-off-by: Brenda Streiff <brenda.streiff@emerson.com>
++---
++ mpm/tools/eeprom.c | 6 +++---
++ 1 file changed, 3 insertions(+), 3 deletions(-)
++
++diff --git a/mpm/tools/eeprom.c b/mpm/tools/eeprom.c
++index ae036ac43..5b04e1366 100644
++--- a/mpm/tools/eeprom.c
+++++ b/mpm/tools/eeprom.c
++@@ -278,7 +278,7 @@ void usrp_sulfur_eeprom_to_file(struct usrp_sulfur_eeprom *ep, const char *path)
++ 	size_t len = sizeof(*ep);
++ 	size_t got = 0;
++ 
++-	fd = open(path, O_WRONLY | O_CREAT);
+++	fd = open(path, O_WRONLY | O_CREAT, 0666);
++ 	if (fd < 0) {
++ 		perror("Could not open file:\n");
++ 		return;
++@@ -303,7 +303,7 @@ void usrp_sulfur_db_eeprom_to_file(struct usrp_sulfur_db_eeprom *ep, const char
++ 	size_t len = sizeof(*ep);
++ 	size_t got = 0;
++ 
++-	fd = open(path, O_WRONLY | O_CREAT);
+++	fd = open(path, O_WRONLY | O_CREAT, 0666);
++ 	if (fd < 0) {
++ 		perror("Could not open file:\n");
++ 		return;
++@@ -397,7 +397,7 @@ void usrp_sulfur_eeprom_to_i2c(struct usrp_sulfur_eeprom *ep, const char *path)
++ 	size_t len = sizeof(*ep);
++ 	size_t i;
++ 
++-	fd = open(path, O_WRONLY | O_CREAT);
+++	fd = open(path, O_WRONLY | O_CREAT, 0666);
++ 	if (fd < 0) {
++ 		perror("Could not open file:\n");
++ 		return;
++-- 
++2.47.3
++
+diff --git a/meta-ettus-core/recipes-support/uhd/mpmd_4.9.bb b/meta-ettus-core/recipes-support/uhd/mpmd_4.9.bb
+index e40b7a43..d75409d9 100644
+--- a/meta-ettus-core/recipes-support/uhd/mpmd_4.9.bb
++++ b/meta-ettus-core/recipes-support/uhd/mpmd_4.9.bb
+@@ -10,4 +10,6 @@ SRC_URI += " file://0001-mpm-rfdc-applied-patch-to-fix-C-compilation-issue.patch
+              file://0005-mpm-include-missing-header-in-mykonos-lib.patch;patchdir=.. \
+              file://0006-mpm-sys_utils.i2c_dev-rework-e.g.-don-t-rely-on-i2c-.patch;patchdir=.. \
+              file://0007-mpm-n3xx-adopt-nvmem-paths-in-eeprom-tools.patch;patchdir=.. \
++             file://0008-mpm-eeprom-specify-mode-for-open-with-O_CREAT.patch;patchdir=.. \
++             \
+             "
+-- 
+2.47.3
+
