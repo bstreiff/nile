@@ -2,6 +2,10 @@ SUMMARY = "NI Linux Embedded development image"
 
 IMAGE_FEATURES += "splash ssh-server-openssh package-management debug-tweaks tools-sdk tools-debug"
 
+# root user must change password at first login
+inherit extrausers
+EXTRA_USERS_PARAMS += "passwd-expire root;"
+
 IMAGE_INSTALL = "\
     packagegroup-core-boot \
     packagegroup-core-full-cmdline \
