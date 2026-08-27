@@ -26,6 +26,17 @@ ROMOUNT="${RWMOUNT}/rofs"
 UPPER_DIR="${RWMOUNT}/upper"
 WORK_DIR="${RWMOUNT}/work"
 
+# Factory reset unmounts the data partition, formats it, then remounts it.
+factory_reset () {
+	umount "${RWMOUNT}"
+	info "reformatting user data partition"
+	mkfs.ext4 -q -F -L "data" "${data_part_device}"
+
+	if mount -n -o rw,sync,relatime "${data_part_device}" "${RWMOUNT}"; then
+		info "remounted user data partition"
+	fi
+}
+
 # udev has populated the /dev/disk tree.
 # TODO: should probably check to ensure data partition is on same physical volume as rootfs?
 #       (protects against someone with an external SD card called "data"...)
@@ -42,6 +53,16 @@ mkdir -p ${RWMOUNT}
 
 if mount -n -o rw,sync,relatime "${data_part_device}" "${RWMOUNT}"; then
 	info "applying user data partition as overlay"
+
+	# Factory reset
+	# TODO: The way that we should be doing factory reset should align with systemd
+	#       (https://systemd.io/FACTORY_RESET/), but scarthgap's systemd is too old
+	#       to have this interface. Current implementation checks for /etc/factory-reset
+	#       being present as a "factory reset is requested" signal.
+	if [ -e "${UPPER_DIR}/etc/factory-reset" ]; then
+		info "factory reset has been requested"
+		factory_reset
+	fi
 
 	# Set up overlay directories
 	mkdir -p "${UPPER_DIR}"
