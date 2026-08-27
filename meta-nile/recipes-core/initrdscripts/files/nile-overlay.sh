@@ -26,6 +26,11 @@ ROMOUNT="${RWMOUNT}/rofs"
 UPPER_DIR="${RWMOUNT}/upper"
 WORK_DIR="${RWMOUNT}/work"
 
+update_overlay_version_marker ()
+{
+	grep 'VERSION_ID=' ${OLDROOT}/etc/os-release > "${RWMOUNT}/rootfs-release"
+}
+
 # Factory reset unmounts the data partition, formats it, then remounts it.
 factory_reset () {
 	umount "${RWMOUNT}"
@@ -34,7 +39,53 @@ factory_reset () {
 
 	if mount -n -o rw,sync,relatime "${data_part_device}" "${RWMOUNT}"; then
 		info "remounted user data partition"
+		update_overlay_version_marker
 	fi
+}
+
+handle_overlay_upgrade () {
+	info "clearing overlay changes to /usr"
+	# clear changes to /usr
+	rm -rf "${UPPER_DIR}/usr"
+	# also clear changes to /etc/ipk-postinsts so on-target postinsts get rerun
+	rm -rf "${UPPER_DIR}/etc/ipk-postinsts"
+
+	update_overlay_version_marker
+}
+
+handle_overlay_downgrade () {
+	msg "clearing all overlay changes"
+
+	# TODO: should be data-driven?
+
+	# On downgrade, we retain password data and ssh keys
+	NEW_UPPER_DIR="${RWMOUNT}/.new_upper"
+	rm -rf "${NEW_UPPER_DIR}"
+	mkdir -p "${NEW_UPPER_DIR}" "${NEW_UPPER_DIR}/etc"
+	for i in "/etc/passwd" "/etc/shadow" "/etc/shadow-" "/etc/group" "/etc/gshadow" "/etc/machine-id"; do
+		if [ -e "${RWMOUNT}${i}" ]; then
+			mv "${RWMOUNT}${i}" "${NEW_UPPER_DIR}${i}"
+		fi
+	done
+
+	# wildcarded to allow for all key types
+	mkdir -p "${NEW_UPPER_DIR}/etc/ssh"
+	mv "${RWMOUNT}/etc/ssh/"ssh_*_key* "${NEW_UPPER_DIR}/etc/ssh"
+
+	# home directories
+	if [ -e "${RWMOUNT}/home" ]; then
+		mv "${RWMOUNT}/home" "${NEW_UPPER_DIR}"
+	fi
+
+	# root's home directory
+	if [ -e "${RWMOUNT}/root" ]; then
+		mv "${RWMOUNT}/root" "${NEW_UPPER_DIR}"
+	fi
+
+	rm -rf "${UPPER_DIR}"
+	mv "${NEW_UPPER_DIR}" "${UPPER_DIR}"
+
+	update_overlay_version_marker
 }
 
 # udev has populated the /dev/disk tree.
@@ -62,6 +113,20 @@ if mount -n -o rw,sync,relatime "${data_part_device}" "${RWMOUNT}"; then
 	if [ -e "${UPPER_DIR}/etc/factory-reset" ]; then
 		info "factory reset has been requested"
 		factory_reset
+	fi
+
+	# compare the rootfs version with the overlay's associated rootfs-release
+	ROOTFS_VER=$(grep -s 'VERSION_ID=' "${OLDROOT}/etc/os-release" | sed 's/.*=//;')
+	OVERLAY_VER=$(grep -s 'VERSION_ID=' "${RWMOUNT}/rootfs-release" | sed 's/.*=//;')
+	systemd-analyze compare-versions "${ROOTFS_VER}" "${OVERLAY_VER}" >/dev/null; CMP=$?
+	if [ ${CMP} -eq 11 ]; then
+		info "rootfs '${ROOTFS_VER}' > overlay '${OVERLAY_VER}'; we have upgraded"
+		handle_overlay_upgrade
+	elif [ ${CMP} -eq 12 ]; then
+		info "rootfs '${ROOTFS_VER}' < overlay '${OVERLAY_VER}'; we have downgraded"
+		handle_overlay_downgrade
+	elif [ ${CMP} -eq 0 ]; then
+		info "rootfs '${ROOTFS_VER}' == overlay '${OVERLAY_VER}'; same version"
 	fi
 
 	# Set up overlay directories
