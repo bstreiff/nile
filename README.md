@@ -22,12 +22,8 @@ Authentication to internal repos
 This layer contains recipes that depend on NI-internal repositories.
 These require `git` to be aware of authentication credentials.
 
-- [Create an AzDO Personal Access Token](https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate?view=azure-devops&tabs=Windows)
-- Create the following file at `$HOME/.netrc` with the generated token:
-    ```
-    machine dev.azure.com login api password <azdo access token>
-    ```
-
+See [Authentication for NILE repos](/docs/repo-authentication.md) for
+further information.
 
 Getting Started
 ---------------
