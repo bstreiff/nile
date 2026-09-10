@@ -1,3 +1,5 @@
+inherit nile-migrate-config
+
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 do_install:append() {
@@ -21,3 +23,6 @@ do_install:append() {
 		fi
 	done
 }
+
+
+NILE_MIGRATE_CONFFILES:${PN}-sshd = "${sysconfdir}/ssh/ssh_host_rsa_key ${sysconfdir}/ssh/ssh_host_ecdsa_key ${sysconfdir}/ssh/ssh_host_ed25519_key"
